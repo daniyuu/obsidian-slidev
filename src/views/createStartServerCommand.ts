@@ -30,8 +30,12 @@ export function createStartServerCommand({
     // For Windows, use npx to run slidev and specify the command and arguments separately
     // This prevents the immediate exit issue
     const command = "slidev";
+    
+    // Wrap the path in quotes to handle paths with hyphens or spaces
+    const quotedPath = `"${slidePathRelativeToTemplatePath}"`;
+    
     const args = [
-      slidePathRelativeToTemplatePath,
+      quotedPath,
       "--",
       "--port",
       config.port.toString(),
@@ -52,7 +56,7 @@ export function createStartServerCommand({
       config.initialScript,
       `cd ${templatePath}`,
       // If you use npm scripts, don't forget to add -- after the npm command:
-      `npm run slidev ${slidePathRelativeToTemplatePath} --port ${config.port}`,
+      `npm run slidev "${slidePathRelativeToTemplatePath}" --port ${config.port}`,
     ].join("\n");
 
     return spawn(codeBlockContent, [], {
