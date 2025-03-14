@@ -24,14 +24,22 @@ const localhost = () => "localhost"; //`127.0.0.1`;
 
 async function fetchIsServerUp(serverBaseUrl: string): Promise<boolean> {
   try {
-    const response = await fetch(`${serverBaseUrl}index.html`);
-    try {
-      await response.text();
-      return true;
-    } catch {
-      return false;
-    }
-  } catch {
+    const url = serverBaseUrl.endsWith('/') ? `${serverBaseUrl}index.html` : `${serverBaseUrl}/index.html`;
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    console.log(`Checking server status at: ${url}`);
+    const response = await fetch(url, { 
+      signal: controller.signal,
+      cache: 'no-cache'
+    });
+    
+    clearTimeout(timeoutId);
+    
+    return response.status < 500;
+  } catch (error) {
+    console.error("Error checking server status:", error);
     return false;
   }
 }
@@ -147,11 +155,12 @@ function SlidevPresentation(props: {
       </h4>
 
       <iframe
-        sandbox="allow-scripts allow-same-origin"
+        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-top-navigation"
         title="Slidev presentation"
         class="size-full"
         id="iframe"
         src={props.src}
+        allow="fullscreen"
       />
     </div>
   );
@@ -240,10 +249,18 @@ export const PresentationView = () => {
 
     addLogListeners(command);
 
-    // Arbitrary wait to the server to start
-    setTimeout(() => {
+    // 增加检测次数和间隔时间
+    let attempts = 0;
+    const maxAttempts = 30;
+    const checkInterval = setInterval(() => {
       void refetch();
-    }, 3000);
+      attempts++;
+      
+      // 如果检测到服务器已启动或达到最大尝试次数，清除定时器
+      if (isServerUp() || attempts >= maxAttempts) {
+        clearInterval(checkInterval);
+      }
+    }, 1000);
 
     process.on("exit", () => {
       killCommand();
@@ -310,7 +327,8 @@ export const PresentationView = () => {
           />
         </Show>
         <Show
-          when={isServerUp()}
+          // when={isServerUp()}
+          when={true}
           fallback={
             <SlidevFallback
               commandLogMessages={commandLogMessages}
